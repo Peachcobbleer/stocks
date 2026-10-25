@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cubicle Pit</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#070806;--fg:#7dff9a;--dim:#3f8f55;--bad:#ff6a5a;--paper:#e8e4d0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#070806}}
+:root[data-theme="dark"]{--bg:#070806}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0;background:var(--bg);overflow:hidden;font-family:"Courier New",Courier,monospace;color:var(--fg)}
+canvas#g{position:fixed;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
+#hud{position:fixed;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom,0px));text-align:center;pointer-events:none;font-size:14px;text-shadow:0 0 6px #000}
+#hint{opacity:.7;margin-top:4px;font-size:12px}
+#pc{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55)}
+.scr{width:min(680px,95vw);max-height:92vh;overflow:auto;background:#04160b repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 1px,transparent 1px 3px);border:3px solid var(--dim);border-radius:14px;box-shadow:0 0 40px rgba(125,255,154,.25),inset 0 0 40px rgba(0,0,0,.6);padding:14px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+button{font:inherit;color:var(--fg);background:#0a2a14;border:1px solid var(--dim);border-radius:4px;padding:5px 8px;cursor:pointer}
+button:hover{background:#12411f}button:focus-visible{outline:2px solid var(--fg)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td{padding:5px 3px;border-bottom:1px solid #12331c;white-space:nowrap}
+tr.sel{background:#0b2b15}.up{color:var(--fg)}.dn{color:var(--bad)}
+td:last-child{text-align:right}td:last-child button{margin-left:3px;padding:4px 6px;font-size:13px}
+#ch{width:100%;height:130px;background:#02100a;border:1px solid #12331c;margin-top:8px}
+#news{font-size:13px;color:#b9ffc8;min-height:3.6em;margin-top:6px;line-height:1.3}
+#tick{min-height:18px;color:#ffd27a}
+#modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.8);padding:16px}
+#modal .box{max-width:460px;border:3px solid var(--dim);background:#050c07;padding:22px;border-radius:10px;text-align:center;line-height:1.45}
+#modal h2{margin:0 0 10px;font-size:26px;letter-spacing:.04em}
+#modal button{display:block;width:100%;margin-top:10px;padding:10px;font-size:15px}
+html,body,*,*::before,*::after{cursor:none!important}
+#vig{position:fixed;inset:0;pointer-events:none;z-index:3;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,.88) 100%),repeating-linear-gradient(0deg,rgba(0,0,0,.2) 0 1px,transparent 1px 3px)}
+#cur{position:fixed;left:0;top:0;width:28px;height:28px;pointer-events:none;z-index:99;transform:translate(-60px,-60px);filter:drop-shadow(0 0 4px rgba(255,120,40,.7))}
+#cur svg{display:block;transition:scale .08s;transform-origin:2px 2px}
+#cur.hot svg{scale:1.3}#cur .f{fill:#e8e4d0}#cur.hot .f{fill:#ff7a3a}
+#help{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:5;width:34px;height:34px;padding:0;border-radius:50%;font-weight:bold}
+#pc{z-index:2}#modal{z-index:6}
+@media not (any-pointer:fine){#cur{display:none}*{cursor:auto!important}}
+#guide{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;translate:-50% 0;width:min(560px,90vw);z-index:7;background:#120a05;border:2px solid #ffb347;border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.4;color:#ffe3b8;box-shadow:0 0 20px rgba(255,150,40,.35)}
+#guide[hidden]{display:none}#guide b{font-size:16px;color:#ffb347}#gx{margin:4px 0 8px}
+#guide .gr{display:flex;gap:8px;align-items:center;justify-content:flex-end}#gn{margin-right:auto;font-size:12px;opacity:.7}
+#hl{position:fixed;left:0;top:0;width:90px;height:90px;margin:-45px 0 0 -45px;border:4px solid #ffb347;border-radius:50%;z-index:4;pointer-events:none;display:none;box-shadow:0 0 22px #ffb347;animation:pl .7s infinite alternate}
+#hl::before{content:'\25BC';position:absolute;left:50%;top:-36px;translate:-50% 0;color:#ffb347;font-size:26px;animation:bob .5s infinite alternate}
+.glow{outline:3px solid #ffb347!important;box-shadow:0 0 14px #ffb347!important;animation:pl .7s infinite alternate}
+@keyframes pl{to{outline-color:#ff5a2a;border-color:#ff5a2a}}@keyframes bob{to{top:-24px}}
+body.tut #help{display:none}body.tut #pc{align-items:flex-end;padding-top:150px;box-sizing:border-box}body.tut .scr{max-height:calc(100vh - 160px)}
+
+:root{--fg:#f2e2c0;--dim:#000;--bad:#ff5a4a;--ok:#3fd16a;--panel:#1b100c;--P:'Press Start 2P',monospace}
+html,body{font-family:'VT323','Courier New',monospace;font-size:20px;color:var(--fg)}
+.ttl,#guide b,#modal h2{font-family:var(--P);font-weight:normal}
+.scr{background:var(--panel);border:5px solid #000;border-radius:0;box-shadow:0 0 0 4px #f2e2c0,10px 10px 0 4px #000;padding:0}
+.top{background:#d8352a;margin:0;padding:10px 12px;border-bottom:5px solid #000}
+.ttl{font-size:13px;color:#f2e2c0;text-shadow:2px 2px 0 #000}
+#cs{color:#ffd23f;font-size:22px;text-shadow:2px 2px 0 #000}
+.body{padding:10px 12px 12px}
+button{font-family:var(--P);font-size:11px;color:#f2e2c0;background:#7a4a1a;border:3px solid #000;border-radius:0;padding:7px 9px;box-shadow:0 4px 0 #000}
+button:hover{background:#9a5e22;filter:brightness(1.15)}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 #000}
+td button[data-a^=b]{background:#2e9e4f}td button[data-a^=s]{background:#c0392b}
+td:last-child button{padding:6px 7px;font-size:9px;margin-left:5px}
+table{font-size:22px}
+th{font-family:var(--P);font-size:8px;font-weight:normal;color:#b89a78;text-align:left;padding:4px 3px;border-bottom:3px solid #000}
+td{border-bottom:2px solid #000;padding:6px 3px}
+tr.sel{background:#3a2014;box-shadow:inset 4px 0 0 #ff9a2e}
+.up{color:var(--ok)}.dn{color:var(--bad)}
+#ch{border:4px solid #000;background:#0d0705}
+#news{background:#0d0705;border:3px solid #000;padding:6px 8px;color:#ffd23f;font-size:20px;margin-top:8px}
+#gl{font-size:21px;color:#f2e2c0}
+#goal{height:22px;background:#000;border:3px solid #000;margin:6px 0 8px}
+#goal i{display:block;height:100%;width:0;background:repeating-linear-gradient(90deg,#3fd16a 0 12px,#2a9a4c 12px 15px)}
+#tick{font-size:22px;color:#ffd23f;text-shadow:2px 2px 0 #000}
+#hint{font-size:18px;text-shadow:2px 2px 0 #000}
+#modal .box{background:var(--panel);border:5px solid #000;border-radius:0;box-shadow:0 0 0 4px #f2e2c0,10px 10px 0 4px #000;font-size:22px;line-height:1.35}
+#modal h2{font-size:17px;color:#ffd23f;text-shadow:3px 3px 0 #000;line-height:1.5}
+#modal button{font-size:12px;padding:12px;line-height:1.4}
+#guide{background:var(--panel);border:4px solid #000;border-radius:0;box-shadow:0 0 0 3px #ffb347,6px 6px 0 3px #000;font-size:20px}
+#guide b{font-size:11px;color:#ffd23f;line-height:1.6}
+#help{border-radius:0;width:38px;height:38px;font-size:14px}
+canvas#tvfs{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:8;display:none}
+#tvx,#skip{position:fixed;z-index:9;display:none}
+#tvx{top:calc(12px + env(safe-area-inset-top,0px));right:12px}
+#skip{right:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+#xh{position:fixed;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;pointer-events:none;z-index:99;display:none;transition:transform .12s}
+#xh svg{display:block;filter:drop-shadow(0 0 2px #000)}
+#xh .q{fill:rgba(0,0,0,.25);stroke:#f2e2c0;stroke-width:2}
+#xh.hot{transform:scale(1.35)}#xh.hot .q{fill:#ff7a3a;stroke:#ff7a3a}
+body.lk #xh{display:block}body.lk #cur{display:none}
+/* cursors: arrow (computer/modals), white hand (office, work), system (TV, breaks), cube (look mode) */
+#cur .hd{display:none;transform-origin:6px 1px;margin:0 0 0 -9px}
+body.hand #cur .ar{display:none}body.hand #cur .hd{display:block}
+#cur.hot .hd{scale:1.15}
+body.sys #cur{display:none}
+body.sys,body.sys *{cursor:auto!important}body.sys button,body.sys tr{cursor:pointer!important}
+/* VHS lines over the interface (no glitch slices) */
+#vhs{position:fixed;inset:0;pointer-events:none;z-index:50;display:none;overflow:hidden;background:repeating-linear-gradient(0deg,rgba(0,0,0,.24) 0 1px,transparent 1px 3px),rgba(40,80,255,.04)}
+#vhs::before{content:'';position:absolute;left:0;right:0;top:0;height:120px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.07) 50%,transparent);animation:vband 6s linear infinite}
+body.ui #vhs{display:block}
+@keyframes vband{from{transform:translateY(-130px)}to{transform:translateY(100vh)}}
+/* computer desktop + shop */
+#dsk{position:relative}
+.dbody{position:relative;min-height:270px;background:#0e7c7c;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;padding:12px}
+.ico{display:flex;flex-direction:column;align-items:center;gap:6px;width:96px;background:transparent;border:2px solid transparent;box-shadow:none;padding:6px 2px;font-family:var(--P);font-size:8px;line-height:1.5;color:#fff;text-shadow:1px 1px 0 #000}
+.ico svg{width:52px;height:52px}
+.ico:hover{background:rgba(255,255,255,.18);border:2px dotted #fff;filter:none}.ico:active{transform:none;box-shadow:none}
+.ico.off{opacity:.45;filter:grayscale(1)}
+#dmsg{position:absolute;left:12px;right:12px;bottom:8px;font-size:21px;color:#ffd23f;text-shadow:2px 2px 0 #000;min-height:1em}
+.tbar{display:flex;align-items:center;gap:10px;background:#3a2014;border-top:5px solid #000;padding:6px 8px}
+#tinfo{margin-left:auto;font-size:20px;color:#f2e2c0}
+#smenu{position:absolute;left:8px;bottom:50px;background:#1b100c;border:4px solid #000;box-shadow:0 0 0 3px #f2e2c0;display:none;flex-direction:column;gap:5px;padding:6px;z-index:2}
+#smenu button{text-align:left}
+#dcs,#shcs{color:#ffd23f;font-size:22px;text-shadow:2px 2px 0 #000}
+#shb td:first-child{white-space:normal}.sd{color:#b89a78;font-size:18px}
+#shn{font-size:20px;margin-bottom:6px;color:#b89a78}
+button.no{opacity:.4}
+#modal small{opacity:.7}
+</style></head><body>
+<canvas id="g"></canvas><div id="vig"></div><div id="vhs"></div>
+<div id="cur"><svg class="hd" viewBox="0 0 18 18" width="28" height="28" shape-rendering="crispEdges"><defs><g id="hh"><rect x="5" y="1" width="3" height="9"/><rect x="8" y="4" width="3" height="7"/><rect x="11" y="5" width="3" height="6"/><rect x="14" y="7" width="2" height="5"/><rect x="5" y="9" width="11" height="7"/><rect x="2" y="10" width="4" height="3"/></g></defs><use href="#hh" fill="#fff" stroke="#120804" stroke-width="2"/><use href="#hh" fill="#fff" stroke="none"/></svg><svg class="ar" viewBox="0 0 14 14" width="28" height="28" shape-rendering="crispEdges"><polygon class="f" stroke="#120804" stroke-width="1" points="1,1 1,11 4,8 6,12 8,11 6,7 10,7"/></svg></div>
+<div id="xh"><svg viewBox="0 0 22 22" width="22" height="22" shape-rendering="crispEdges"><rect class="q" x="5" y="5" width="12" height="12"/></svg></div>
+<button id="help" title="How to play">?</button>
+<div id="guide" hidden><b id="gt"></b><div id="gx"></div><div class="gr"><span id="gn"></span><button id="gnext">Next</button><button id="gskip">Skip tutorial</button></div></div>
+<div id="hl"></div>
+<canvas id="tvfs" width="640" height="360"></canvas><button id="tvx">Close TV (Esc)</button><button id="skip">Skip break (Space)</button>
+<div id="hud"><div id="tick"></div><div id="hint">Click the computer to trade or shop · papers for pocket money · board to clock out</div></div>
+<div id="pc">
+<div class="scr" id="dsk">
+<div class="top"><b class="ttl">TRADE-O-TRON 95</b><span id="dcs"></span><button class="leave">Leave (Esc)</button></div>
+<div class="dbody">
+<button class="ico" id="icoStock"><svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="2" y="3" width="28" height="21" fill="#0d0705" stroke="#000" stroke-width="2"/><polyline points="5,20 10,13 14,16 20,8 27,5" fill="none" stroke="#3fd16a" stroke-width="2.5"/><rect x="11" y="26" width="10" height="3" fill="#7a4a1a" stroke="#000"/></svg><span>Stock Market</span></button>
+<button class="ico" id="icoShop"><svg viewBox="0 0 32 32" shape-rendering="crispEdges"><path d="M6 11h20l2 18H4z" fill="#d8352a" stroke="#000" stroke-width="2"/><path d="M11 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="#000" stroke-width="2.5"/><text x="16" y="25" text-anchor="middle" font-size="13" fill="#ffd23f" font-family="monospace" font-weight="bold">$</text></svg><span>Shop</span></button>
+<div id="dmsg"></div>
+</div>
+<div class="tbar"><button id="sbtn">START</button><span id="tinfo"></span></div>
+<div id="smenu"><button data-s="stock">Stock Market</button><button data-s="shop">Shop</button><button data-s="off">Log off</button></div>
+</div>
+<div class="scr" id="stk" style="display:none">
+<div class="top"><b class="ttl">TRADE-O-TRON 95</b><span id="cs"></span><span><button class="home">Home</button> <button id="back" class="leave">Leave (Esc)</button></span></div>
+<div class="body"><div id="gl"></div><div id="goal"><i id="gb"></i></div>
+<table><thead><tr><th>Stock</th><th>Price</th><th>vs open</th><th>Own</th><th>Profit</th><th></th></tr></thead><tbody id="tb"></tbody></table>
+<canvas id="ch" width="640" height="130"></canvas>
+<div id="news"></div></div>
+</div>
+<div class="scr" id="shp" style="display:none">
+<div class="top"><b class="ttl">SHOP-O-MATIC</b><span id="shcs"></span><span><button class="home">Home</button> <button class="leave">Leave (Esc)</button></span></div>
+<div class="body"><div id="shn">Spend cash on upgrades. The shop is only open during breaks.</div>
+<table><thead><tr><th>Item</th><th>Price</th><th></th></tr></thead><tbody id="shb"></tbody></table></div>
+</div></div>
+<div id="modal"><div class="box" id="mb"></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const Q=[150,250,400,650,1000,1600];
+const S={day:1,cash:100,t:0,len:40,pay:4,fee:.02,insider:false,mode:'office',run:false,paper:15,hold:{},cost:{},phase:'work',sh:1,bt:0,sel:2,perks:[],debt:0,debtLeft:0,call:0,callT:0};
+const stocks=[['PAPR',20,.012],['CLVR',12,.03],['PITT',8,.055],['VOID',3,.09]].map(a=>({n:a[0],p:a[1],b:a[1],v:a[2],h:[a[1]],o:a[1],tr:0,tl:0}));
+const rn=()=>(Math.random()+Math.random()+Math.random()-1.5)*2;
+const net=()=>S.cash+stocks.reduce((a,s,i)=>a+(S.hold[i]||0)*s.p,0);
+let pend=[],nt=0,sfx;
+function beep(f,d=.08){try{sfx=sfx||new AudioContext();const o=sfx.createOscillator(),g=sfx.createGain();o.frequency.value=f;o.type='square';g.gain.value=.04;o.connect(g);g.connect(sfx.destination);o.start();o.stop(sfx.currentTime+d)}catch(e){}}
+function clk(up){try{sfx=sfx||new AudioContext();const n=sfx.sampleRate*.025|0,b=sfx.createBuffer(1,n,sfx.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3);const q=sfx.createBufferSource(),f=sfx.createBiquadFilter(),g=sfx.createGain();f.type='highpass';f.frequency.value=up?2600:1400;g.gain.value=up?.25:.55;q.buffer=b;q.connect(f);f.connect(g);g.connect(sfx.destination);q.start()}catch(e){}}
+addEventListener('pointerdown',()=>clk(0),true);addEventListener('pointerup',()=>clk(1),true);
+function AC(){sfx=sfx||new AudioContext();if(sfx.state=='suspended')sfx.resume();return sfx}
+let stepAlt=0;
+function footstep(){try{const c=AC(),t=c.currentTime,sr=c.sampleRate;
+  const mk=(len,att,pw)=>{const n=sr*len|0,b=c.createBuffer(1,n,sr),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.min(1,i/(sr*att))*Math.pow(1-i/n,pw);return b};
+  const L=(buf,type,f,q,g,rate)=>{const q2=c.createBufferSource(),fl=c.createBiquadFilter(),gn=c.createGain();q2.buffer=buf;q2.playbackRate.value=rate;fl.type=type;fl.frequency.value=f;fl.Q.value=q;gn.gain.value=g;q2.connect(fl);fl.connect(gn);gn.connect(c.destination);q2.start(t)};
+  stepAlt^=1;const v=.85+Math.random()*.3;
+  L(mk(.17,.022,2),'lowpass',230+Math.random()*80+stepAlt*30,.5,2.6*v,.9+Math.random()*.2);   /* muffled pad */
+  L(mk(.13,.035,2.5),'bandpass',1400+Math.random()*500,.5,.07*v,1);                              /* fibre rustle */
+  const o=c.createOscillator(),og=c.createGain();o.type='sine';o.frequency.setValueAtTime(70-stepAlt*8,t);o.frequency.exponentialRampToValueAtTime(48,t+.12);
+  og.gain.setValueAtTime(0,t);og.gain.linearRampToValueAtTime(.07*v,t+.015);og.gain.exponentialRampToValueAtTime(.001,t+.13);o.connect(og);og.connect(c.destination);o.start(t);o.stop(t+.14)}catch(e){}}
+let buzz=null;
+function startBuzz(){if(buzz)return;try{const c=AC(),m=c.createGain(),lp=c.createBiquadFilter();m.gain.value=0;lp.type='lowpass';lp.frequency.value=2200;lp.connect(m);m.connect(c.destination);
+  [[120,'sine',1],[240,'triangle',.55],[360,'sawtooth',.18],[480,'sine',.12]].forEach(a=>{const o=c.createOscillator(),g=c.createGain();o.type=a[1];o.frequency.value=a[0];g.gain.value=a[2];o.connect(g);g.connect(lp);o.start()});
+  const n=c.sampleRate*2|0,b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
+  const ns=c.createBufferSource(),bp=c.createBiquadFilter(),ng=c.createGain();ns.buffer=b;ns.loop=true;bp.type='bandpass';bp.frequency.value=3200;bp.Q.value=.8;ng.gain.value=.12;ns.connect(bp);bp.connect(ng);ng.connect(lp);ns.start();
+  m.gain.setTargetAtTime(.012,c.currentTime,.8);buzz=m}catch(e){}}
+addEventListener('pointerdown',startBuzz,true);
+function say(t){$('tick').textContent=t;$('news').innerHTML=('<div>'+t+'</div>')+$('news').innerHTML.split('</div>').slice(0,2).join('</div>')}
+const NEWS={up:['posts record paperwork','CEO "feels great"','wins a government contract','rumored to be acquired'],dn:['faces an audit','CEO missing since Tuesday','recalls all staplers','sued by the basement']};
+
+function tick(){
+  stocks.forEach(s=>{
+    if(--s.tl<=0){s.tr=rn()*s.v*.5;s.tl=3+(Math.random()*6|0)}
+    s.p=Math.max(.5,+(s.p*Math.exp(s.tr+rn()*s.v*.7+(s.b-s.p)/s.b*.006+(s.bias||0))).toFixed(2));
+    s.h.push(s.p);if(s.h.length>110)s.h.shift();
+  });
+  if(++nt%10==0){
+    const s=stocks[Math.random()*4|0],d=Math.random()<.5?1:-1,real=Math.random()<.7?d:-d;
+    const txt=s.n+' '+NEWS[d>0?'up':'dn'][Math.random()*4|0];
+    pend.push({t:4,s,real,txt});
+    if(S.insider)say('[TIP] '+txt+(real>0?' \u25B2':' \u25BC'));
+  }
+  pend.forEach(e=>{if(--e.t==0){e.s.tr=e.real*e.s.v*.8;e.s.tl=8;if(!S.insider)say(e.txt)}});
+  pend=pend.filter(e=>e.t>0);
+  ui();
+}
+
+/* ---------- 3D scene ---------- */
+const R=new THREE.WebGLRenderer({canvas:$('g'),antialias:false});R.setPixelRatio(1);
+const sc=new THREE.Scene();sc.background=new THREE.Color(0x0a0504);sc.fog=new THREE.Fog(0x0a0504,2.5,9);
+const cam=new THREE.PerspectiveCamera(60,1,.1,40);
+const M=(c,r=.9)=>new THREE.MeshStandardMaterial({color:c,roughness:r});
+function TX(base,o={}){
+  const s=128,c=document.createElement('canvas');c.width=c.height=s;const x=c.getContext('2d');
+  x.fillStyle=base;x.fillRect(0,0,s,s);
+  for(let i=0;i<s*s*.5;i++){x.fillStyle=Math.random()<.6?'rgba(0,0,0,'+Math.random()*.2+')':'rgba(255,235,200,'+Math.random()*.07+')';x.fillRect(Math.random()*s,Math.random()*s,1+(Math.random()*2|0),1)}
+  if(o.wood)for(let y=0;y<s;y+=2+(Math.random()*4|0)){x.fillStyle='rgba(20,8,0,'+Math.random()*.4+')';x.fillRect(0,y,s,1)}
+  for(let i=0;i<(o.stain||0);i++){const px=Math.random()*s,py=Math.random()*s,g=x.createRadialGradient(px,py,0,px,py,12+Math.random()*30);g.addColorStop(0,'rgba(12,5,0,.4)');g.addColorStop(1,'rgba(12,5,0,0)');x.fillStyle=g;x.fillRect(0,0,s,s)}
+  if(o.drip)for(let i=0;i<9;i++){const px=Math.random()*s,h=20+Math.random()*90,g=x.createLinearGradient(0,0,0,h);g.addColorStop(0,'rgba(0,0,0,.5)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(px,0,2+Math.random()*5,h)}
+  if(o.line)for(let y=10;y<s;y+=9){x.fillStyle='rgba(30,30,60,.45)';x.fillRect(8,y,(s-16)*(.5+Math.random()*.5),2)}
+  const t=new THREE.CanvasTexture(c);t.magFilter=t.minFilter=THREE.NearestFilter;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(o.r||1,o.r2||o.r||1);return t}
+const MT=(b,o,r=.9)=>new THREE.MeshStandardMaterial({map:TX(b,o),roughness:r});
+function box(w,h,d,x,y,z,m){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);sc.add(o);return o}
+const WL=MT('#3d3a30',{drip:1,stain:6,r:3,r2:1.2}),PF=MT('#46503f',{stain:2,r:2}),PL=MT('#a89f86',{stain:3});
+box(9,.1,9,0,-.05,0,MT('#2a2622',{stain:8,r:3}));box(9,.1,9,0,4,0,MT('#2b2823',{stain:6,r:2}));
+box(9,4,.1,0,2,-3,WL);box(.1,4,9,-4,2,0,WL);box(.1,4,9,4,2,0,WL);box(9,4,.1,0,2,4,WL);
+box(.1,2.3,1.1,-3.93,1.15,-0.8,M(0x1a1a16));
+box(.1,1.7,2.6,-2.3,.85,-1.7,PF);box(.1,1.7,2.6,2.7,.85,-1.7,PF);
+box(.9,.05,.18,0,3.95,-1,new THREE.MeshBasicMaterial({color:0xffc98a}));
+box(3.2,.08,1.3,0,.95,-2.3,MT('#4d311b',{wood:1,stain:3,r:2,r2:1},.7));
+[[-1.5,-1.8],[1.5,-1.8],[-1.5,-2.75],[1.5,-2.75]].forEach(p=>box(.08,.95,.08,p[0],.47,p[1],M(0x333333)));
+box(.7,.04,.25,-.5,1,-1.85,PL);
+const mug=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.1,12),M(0xaa3322));mug.position.set(.2,1.03,-2);sc.add(mug);
+const phoneBase=box(.44,.09,.3,-1.15,1.04,-1.85,M(0x9c2b22,.6)),phoneHand=box(.42,.06,.1,-1.15,1.12,-1.85,M(0x7e1f18,.6)),phoneLed=box(.05,.02,.05,-1.02,1.095,-1.74,new THREE.MeshBasicMaterial({color:0x220a05}));
+const mon=box(.9,.75,.6,-.5,1.4,-2.4,PL);box(.3,.2,.3,-.5,1.05,-2.4,M(0xa8a18a));
+const sk=document.createElement('canvas');sk.width=256;sk.height=200;const sx=sk.getContext('2d'),st=new THREE.CanvasTexture(sk);
+const screen=new THREE.Mesh(new THREE.PlaneGeometry(.7,.55),new THREE.MeshBasicMaterial({map:st}));screen.position.set(-.5,1.42,-2.09);sc.add(screen);
+const papers=box(.5,.3,.65,1,1.1,-2.1,MT('#d8d2b8',{line:1},.95));
+const bc=document.createElement('canvas');bc.width=512;bc.height=360;const bx=bc.getContext('2d'),bt=new THREE.CanvasTexture(bc);
+box(2.25,1.6,.06,1.7,2.35,-2.92,M(0x222222));
+const board=new THREE.Mesh(new THREE.PlaneGeometry(2.1,1.48),new THREE.MeshBasicMaterial({map:bt,color:0xdddddd}));board.position.set(1.7,2.35,-2.88);sc.add(board);
+sc.add(new THREE.AmbientLight(0x6a4a3a,.45));
+const lamp=new THREE.PointLight(0xff9a55,1.2,12);lamp.position.set(0,3.6,-1);sc.add(lamp);
+const glow=new THREE.PointLight(0x55ff88,.5,3);glow.position.set(-.5,1.4,-1.7);sc.add(glow);const red=new THREE.PointLight(0xff2a1a,.7,7);red.position.set(3,3,-1);sc.add(red);
+
+
+/* ---------- TV news ---------- */
+const NAMES=['Pinehill Paper','Clover Holdings','Pitt Mining','Void Dynamics'];
+let fc=[0,0,0,0],script=[],sylls=[],vg=null,tvFull=false,lastOff=0;
+const nc=$('tvfs'),nx=nc.getContext('2d'),ntex=new THREE.CanvasTexture(nc);ntex.minFilter=THREE.LinearFilter;
+const tvb=box(.2,1.05,1.7,3.84,1.95,.8,M(0x151515)),tvs=new THREE.Mesh(new THREE.PlaneGeometry(1.5,.844),new THREE.MeshBasicMaterial({map:ntex}));
+tvs.position.set(3.735,1.95,.8);tvs.rotation.y=-Math.PI/2;sc.add(tvs);box(.5,.85,1.3,3.65,.42,.8,M(0x2a2018));
+const tvl=new THREE.PointLight(0x88aaff,.1,5);tvl.position.set(3.1,1.9,.8);sc.add(tvl);
+const R2=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});R2.setSize(640,360,false);
+const nsc=new THREE.Scene(),ncam=new THREE.PerspectiveCamera(32,16/9,.1,30);ncam.position.set(0,1.5,5.2);ncam.lookAt(0,1.35,0);
+nsc.add(new THREE.AmbientLight(0xffffff,.8));const dl=new THREE.DirectionalLight(0xfff0e0,.9);dl.position.set(2,4,5);nsc.add(dl);
+const NM=c=>new THREE.MeshLambertMaterial({color:c});
+function nb(w,h,d,x,y,z,c,g=nsc){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),NM(c));m.position.set(x,y,z);g.add(m);return m}
+function ns(r,x,y,z,c,g=nsc){const m=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),NM(c));m.position.set(x,y,z);g.add(m);return m}
+const bk=document.createElement('canvas');bk.width=256;bk.height=144;const bq=bk.getContext('2d'),gr=bq.createLinearGradient(0,0,256,144);gr.addColorStop(0,'#0a1a44');gr.addColorStop(1,'#1c4a8a');bq.fillStyle=gr;bq.fillRect(0,0,256,144);
+bq.strokeStyle='rgba(255,255,255,.1)';for(let i=0;i<256;i+=16){bq.beginPath();bq.moveTo(i,0);bq.lineTo(i,144);bq.stroke()}for(let i=0;i<144;i+=16){bq.beginPath();bq.moveTo(0,i);bq.lineTo(256,i);bq.stroke()}
+bq.fillStyle='rgba(255,255,255,.2)';bq.font='bold 54px sans-serif';bq.fillText('C24',140,110);
+const bkm=new THREE.Mesh(new THREE.PlaneGeometry(9,5.06),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(bk)}));bkm.position.set(0,1.8,-2);nsc.add(bkm);
+nb(3.2,.95,.9,0,.48,1.1,0x15264a);nb(3.2,.1,.02,0,.8,1.56,0xd8352a);
+const an=new THREE.Group();an.position.set(0,0,.2);nsc.add(an);
+nb(1.05,.85,.45,0,1.2,0,0x22252e,an);nb(.3,.55,.02,0,1.3,.235,0xffffff,an);nb(.08,.5,.03,0,1.27,.25,0xd8352a,an);nb(.2,.14,.2,0,1.68,0,0xe2b48c,an);
+nb(.22,.6,.22,-.62,1.15,.05,0x22252e,an);nb(.22,.6,.22,.62,1.15,.05,0x22252e,an);nb(.18,.12,.6,-.5,1,.4,0x22252e,an);nb(.18,.12,.6,.5,1,.4,0x22252e,an);ns(.1,-.5,1,.72,0xe2b48c,an);ns(.1,.5,1,.72,0xe2b48c,an);
+const hg=new THREE.Group();hg.position.set(0,1.95,0);an.add(hg);ns(.28,0,0,0,0xe2b48c,hg);
+const hr=new THREE.Mesh(new THREE.SphereGeometry(.3,16,12,0,Math.PI*2,0,Math.PI*.55),NM(0x3b2414));hr.position.set(0,.03,-.03);hg.add(hr);nb(.62,.55,.12,0,-.15,-.22,0x3b2414,hg);
+const eyes=[-.1,.1].map(x=>ns(.035,x,.05,.25,0x111111,hg));nb(.1,.02,.02,-.1,.12,.26,0x3b2414,hg);nb(.1,.02,.02,.1,.12,.26,0x3b2414,hg);nb(.04,.08,.04,0,-.02,.28,0xc99a76,hg);
+const mouth=nb(.13,.03,.03,0,-.12,.26,0x7a1f1f,hg);
+function anim(t,o){hg.rotation.y=Math.sin(t*.6)*.15;hg.rotation.x=Math.sin(t*1.3)*.02-o*.05;hg.position.y=1.95+Math.sin(t*2)*.006+o*.01;mouth.scale.y=.4+o*5;mouth.scale.x=1-o*.2;const b=(t%3.2)<.12?.1:1;eyes.forEach(e=>e.scale.y=b);an.rotation.y=Math.sin(t*.4)*.04}
+function genForecast(){fc=stocks.map(()=>{const r=Math.random();return r<.35?1:r<.65?-1:0});if(fc.every(v=>!v))fc[2]=1;stocks.forEach((q,i)=>q.nb=(fc[i]&&Math.random()<.75)?fc[i]:-fc[i])}
+function buildScript(){
+  const L=[['i','Market report. Here is what to expect next shift.']];
+  stocks.forEach((q,i)=>L.push([i,fc[i]>0?NAMES[i]+' is surging. Analysts expect big gains.':fc[i]<0?NAMES[i]+' is crashing. Investors are running for the exit.':NAMES[i]+' is flat. Not much is moving.']));
+  L.push(['o','That is all. Now get back to work.']);
+  let t=.5;sylls=[];
+  script=L.map(l=>{const t0=t;l[1].toLowerCase().split(/\s+/).forEach(w=>{const n=Math.max(1,Math.ceil(w.length/3));for(let k=0;k<n;k++){const d=.07+Math.random()*.05;sylls.push({t,d,f:130+Math.random()*90+(k?0:25)});t+=d+.04}t+=.09});t+=.5;return{k:l[0],tx:l[1],t0,tt:t}});
+}
+function talk(){try{sfx=sfx||new AudioContext();if(sfx.state=='suspended')sfx.resume();vg=sfx.createGain();vg.gain.value=.5;vg.connect(sfx.destination);const t0=sfx.currentTime+.05;
+  sylls.forEach(y=>{const o=sfx.createOscillator(),f=sfx.createBiquadFilter(),g=sfx.createGain(),a=t0+y.t;o.type='sawtooth';o.frequency.setValueAtTime(y.f,a);o.frequency.linearRampToValueAtTime(y.f*.85,a+y.d);f.type='bandpass';f.frequency.value=500+Math.random()*900;f.Q.value=2.5;g.gain.setValueAtTime(0,a);g.gain.linearRampToValueAtTime(.16,a+.02);g.gain.linearRampToValueAtTime(0,a+y.d);o.connect(f);f.connect(g);g.connect(vg);o.start(a);o.stop(a+y.d+.02)})}catch(e){}}
+function stopTalk(){try{vg&&vg.disconnect()}catch(e){}vg=null}
+function tv(on){tvFull=!!on;$('tvfs').style.display=on?'block':'none';$('tvx').style.display=on?'block':'none'}
+$('tvx').onclick=()=>{tv(false);lockReq(true)};$('tvfs').onclick=()=>{tv(false);lockReq(true)};$('skip').onclick=()=>endBreak();
+function scan(){nx.fillStyle='rgba(0,0,0,.3)';for(let y=0;y<360;y+=3)nx.fillRect(0,y,640,1)}
+function vhs(t){
+  const x=nx;
+  x.globalAlpha=.2;x.drawImage(nc,3,0);x.globalAlpha=1;                       /* colour ghosting */
+  const by=(t*38)%460-60;                                                      /* rolling tracking band */
+  if(by>-20&&by<340){x.fillStyle='rgba(255,255,255,.07)';x.fillRect(0,by,640,22)}
+  x.fillStyle='rgba(255,255,255,.25)';for(let i=0;i<60;i++)x.fillRect(Math.random()*640,Math.random()*360,2+Math.random()*10,1);
+  x.fillStyle='rgba(255,255,255,.4)';for(let i=0;i<50;i++)x.fillRect(Math.random()*640,348+Math.random()*12,3+Math.random()*20,1);   /* head-switch noise */
+  x.fillStyle='rgba(40,80,255,.05)';x.fillRect(0,0,640,360);
+  scan()}
+function drawOff(){nx.fillStyle='#050505';nx.fillRect(0,0,640,360);for(let i=0;i<500;i++){nx.fillStyle='rgba(255,255,255,'+Math.random()*.25+')';nx.fillRect(Math.random()*640,Math.random()*360,6,3)}nx.fillStyle='#f2e2c0';nx.font='28px "Press Start 2P",monospace';nx.textAlign='center';nx.fillText('OFF AIR',320,170);nx.font='24px VT323,monospace';nx.fillText('Back on at the next break',320,205);nx.textAlign='left';scan()}
+function drawNews(el,t){
+  const x=nx;x.drawImage(R2.domElement,0,0,640,360);
+  const sg=script.find(g=>el>=g.t0-.3&&el<g.tt),one=sg&&typeof sg.k=='number'?sg.k:-1,col=u=>u>0?'#3fd16a':u<0?'#ff5a4a':'#ffd23f',ar=u=>u>0?'\u25B2 ':u<0?'\u25BC ':'\u25A0 ';
+  x.fillStyle='#d8352a';x.fillRect(10,10,86,26);x.fillStyle='#fff';x.font='14px "Press Start 2P",monospace';x.fillText('C24',18,30);
+  x.fillStyle='rgba(0,0,0,.6)';x.fillRect(100,10,64,26);x.fillStyle='#ff4040';x.beginPath();x.arc(114,23,5,0,7);x.fill();x.fillStyle='#fff';x.font='bold 14px sans-serif';x.fillText('LIVE',124,28);
+  const ph=one<0?118:100;x.fillStyle='rgba(8,20,48,.9)';x.fillRect(400,48,230,ph);x.strokeStyle='#f2e2c0';x.lineWidth=2;x.strokeRect(400,48,230,ph);
+  if(one>=0){const u=fc[one];x.fillStyle='#fff';x.font='bold 20px sans-serif';x.fillText(NAMES[one],410,76);x.fillStyle=col(u);x.font='bold 38px sans-serif';x.fillText(ar(u)+stocks[one].n,410,118);x.font='bold 18px sans-serif';x.fillText(u>0?'SURGING':u<0?'CRASHING':'FLAT',410,142)}
+  else{x.fillStyle='#ffd23f';x.font='bold 15px sans-serif';x.fillText('MARKET OUTLOOK',410,68);stocks.forEach((q,i)=>{const u=fc[i];x.fillStyle=col(u);x.font='bold 18px sans-serif';x.fillText(ar(u)+q.n+'   '+(u>0?'UP':u<0?'DOWN':'FLAT'),410,92+i*20)})}
+  x.fillStyle='#d8352a';x.fillRect(0,262,140,30);x.fillStyle='#fff';x.font='bold 16px sans-serif';x.fillText(one<0?'MARKET WATCH':'BREAKING',10,283);
+  x.fillStyle='#0b1b3a';x.fillRect(140,262,500,30);x.fillStyle='#fff';x.font='bold 17px sans-serif';x.fillText(sg?sg.tx:'Stay tuned for the next shift',150,283,480);
+  x.fillStyle='#f2c94c';x.fillRect(0,296,640,34);x.save();x.beginPath();x.rect(0,296,640,34);x.clip();x.fillStyle='#111';x.font='bold 18px sans-serif';
+  const cr=stocks.map((q,i)=>q.n+' '+ar(fc[i])+(fc[i]>0?'SURGING':fc[i]<0?'CRASHING':'FLAT')).join('     \u2022     ')+'     \u2022     ',w=x.measureText(cr).width,o=(t*70)%w;
+  x.fillText(cr,-o,319);x.fillText(cr,w-o,319);x.restore();
+  x.fillStyle='#000';x.fillRect(0,330,640,30);x.fillStyle='#fff';x.font='13px sans-serif';x.fillText('CLOVER 24 NEWS  \u2022  Shift '+S.sh+' of 3  \u2022  Next shift in '+Math.ceil(S.bt)+'s',10,350);vhs(t);
+}
+function newsFrame(t){
+  tvl.intensity=S.phase=='break'?.9:.1;
+  if(S.phase=='break'&&S.run){const el=20-S.bt,sy=sylls.find(y=>el>=y.t&&el<y.t+y.d),o=sy?Math.sin(Math.PI*(el-sy.t)/sy.d):0;anim(t,o);R2.render(nsc,ncam);drawNews(el,t);ntex.needsUpdate=true}
+  else if(t-lastOff>.25){lastOff=t;drawOff();ntex.needsUpdate=true}
+}
+/* ---------- shifts & breaks ---------- */
+const HINT=$('hint').textContent,P=new THREE.Vector3(.4,1.5,.3),K={};
+/* pointer lock (break only) */
+const gc=$('g');let locked=false,noLock=!('requestPointerLock' in gc),lockG=false,everLocked=false,yaw=0,pitch=0,stepD=0,ringT=0,bzf=false,vfail=(!('requestPointerLock' in gc)&&matchMedia('(any-pointer:fine)').matches)?1:0,lastReq=0;
+function wantLock(){return S.run&&S.phase=='break'&&S.mode=='office'&&!tvFull&&$('modal').style.display!='flex'}
+function virt(){return !locked&&vfail>0&&wantLock()}
+function ctr(){return locked||virt()}
+function lockReq(g){if(noLock||locked||!wantLock())return;lockG=lockG||g;const t=performance.now();if(t-lastReq<250)return;lastReq=t;try{const p=gc.requestPointerLock();p&&p.catch&&p.catch(()=>{})}catch(e){if(g)vfail++}}
+function updateHint(){if(S.phase!='break')return;$('hint').textContent=locked?'BREAK: WASD walk · mouse look · click the TV, phone, computer (shop) or board · Esc frees the mouse · Space skips':vfail>0?'BREAK: the browser blocked mouse lock, so the cursor is hidden and the crosshair stays in the centre. Move the mouse to look, and push it against a screen edge to keep turning. WASD walks. Space skips.':'BREAK: click anywhere to lock the mouse, then WASD to walk and look around freely. Space skips.'}
+document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===gc;if(locked){everLocked=true;vfail=0}lockG=false;updateHint()});
+document.addEventListener('pointerlockerror',()=>{if(lockG&&!everLocked)vfail++;lockG=false;updateHint()});
+addEventListener('mousemove',e=>{if(!ctr())return;yaw+=e.movementX*.0022;pitch=Math.max(-1.2,Math.min(1.2,pitch-e.movementY*.0022))});
+/* bank phone */
+function pm(h,btns){S.run=false;modal(h,btns.map(b=>[b[0],()=>{S.run=true;b[1]()}]))}
+function openPhone(){
+  if(S.call==2)return answerCall();
+  const owe=S.debt>0,b=[];
+  let h='<h2>OFFICE PHONE</h2>'+(owe?'You owe the bank <b>$'+S.debt+'</b>. '+S.debtLeft+' round'+(S.debtLeft==1?'':'s')+' left. The bank takes 25% of your money at every clock out.':S.call==1?'You are waiting for the bank to call you back.':'The bank is on speed dial.');
+  if(!owe&&S.call!=1)b.push(['Ask for a loan and I\'ll call later',askLoan]);
+  if(owe&&S.cash>=1)b.push(['Pay back $'+Math.min(S.debt,Math.floor(S.cash))+' now',payDebt]);
+  b.push(['Hang up',()=>{}]);pm(h,b)}
+function askLoan(){
+  if(net()>=Q[S.day-1]){pm('<h2>THE BANK</h2>"You already have enough money for today\'s quota. Loan denied."',[['Hang up',()=>{}]]);return}
+  S.call=1;S.callT=8;pm('<h2>THE BANK</h2>"Let me check your file. I\'ll call you back shortly."<br><small>Listen for the phone. It only works during breaks.</small>',[['Hang up',()=>{}]])}
+function answerCall(){
+  const need=Q[S.day-1]-net();
+  if(need<=0){S.call=0;pm('<h2>THE BANK</h2>"Good news, you have enough money now. No loan needed."',[['Hang up',()=>{}]]);return}
+  const amt=Math.min(800,Math.max(50,Math.ceil((need+25)/10)*10));
+  pm('<h2>THE BANK</h2>"We can lend you <b>$'+amt+'</b>. Repay it within 5 rounds. At every clock out we take 25% of your money. If it is not repaid in time, we take everything you own and you lose."',[['Take the $'+amt+' loan',()=>takeLoan(amt)],['Decline',()=>{S.call=0}]])}
+function takeLoan(a){S.call=0;S.debt=a;S.debtLeft=5;S.cash=+(S.cash+a).toFixed(2);drawBoard();ui();beep(700,.12);say('Loan approved: +$'+a+'. You owe $'+a+', 5 rounds to repay.')}
+function payDebt(){const p=Math.min(S.debt,Math.floor(S.cash));if(p<1)return;S.cash=+(S.cash-p).toFixed(2);S.debt-=p;if(S.debt<=0){S.debt=0;S.debtLeft=0;say('Debt cleared!')}else say('Paid $'+p+'. You still owe $'+S.debt+'.');drawBoard();ui();beep(600,.1)}
+function bankCut(){if(S.debt<=0)return -1;const c=Math.min(S.debt,Math.floor(S.cash*.25));S.cash=+(S.cash-c).toFixed(2);S.debt-=c;if(S.debt<=0){S.debt=0;S.debtLeft=0}else S.debtLeft--;return c}
+const PICK=[mon,screen,papers,board,tvs,tvb,phoneBase,phoneHand];
+function extras(dt,now){
+  if(locked&&!wantLock()){try{document.exitPointerLock()}catch(e){}}
+  const mo=$('modal').style.display=='flex',cn=ctr(),sys=!cn&&(tvFull||(S.phase=='break'&&S.mode=='office')),hd=!cn&&!sys&&S.mode=='office'&&!mo,B=document.body.classList;
+  B.toggle('lk',cn);B.toggle('sys',sys);B.toggle('hand',hd);B.toggle('ui',S.mode=='pc'||mo||!$('guide').hidden);
+  if(S.mode=='pc'&&S.app=='desk')deskState();
+  if(S.mode=='pc'&&S.app=='shop'&&S.phase!='break')showApp('desk');
+  if(ctr()&&S.mode=='office'&&S.run){mv.set(0,0);ray.setFromCamera(mv,cam);const h=ray.intersectObjects(PICK)[0];$('xh').classList.toggle('hot',!!h);const hb=!!(h&&h.object==board&&h.uv.y<.26);if(hb!=hoverBtn){hoverBtn=hb;drawBoard()}}
+  if(S.run&&S.phase=='break'){
+    if(S.call==1){S.callT-=dt;if(S.callT<=0){S.call=2;ringT=0;say('The phone is ringing! Click it to answer.')}}
+    if(S.call==2){ringT-=dt;if(ringT<=0){ringT=1.5;beep(880,.1);setTimeout(()=>beep(990,.1),160);setTimeout(()=>beep(880,.1),420);setTimeout(()=>beep(990,.1),580)}}
+  }
+  phoneBase.rotation.z=phoneHand.rotation.z=(S.call==2&&S.phase=='break')?Math.sin(now*.06)*.05:0;
+  phoneLed.material.color.setHex(S.call==2?((now/280|0)%2?0xff2a10:0x330a05):S.call==1?0xffaa22:0x220a05);
+  if(buzz&&(fl>.01||bzf)){bzf=fl>.01;buzz.gain.setTargetAtTime(.012*(1-fl*.75)+(fl>.3?Math.random()*.006:0),sfx.currentTime,.03)}
+}
+addEventListener('keydown',e=>{K[e.key.toLowerCase()]=1;if(e.key==' '&&S.phase=='break'&&S.run&&!S.tut){e.preventDefault();endBreak()}if(e.key=='Escape')tv(false)});
+addEventListener('keyup',e=>delete K[e.key.toLowerCase()]);
+function startBreak(){S.phase='break';S.bt=20;genForecast();buildScript();stopTalk();talk();go('office');$('skip').style.display='block';yaw=0;pitch=0;updateHint();lockReq(false);drawBoard()}
+function endBreak(){if(S.phase!='break')return;S.phase='work';S.t=0;stopTalk();tv(false);stocks.forEach(q=>q.bias=(q.nb||0)*q.v*.25);$('skip').style.display='none';$('hint').textContent=HINT;drawBoard();beep(500,.15);say('Shift '+S.sh+' of 3 begins')}
+function endShift(){if(S.sh>=3)endDay();else{S.sh++;startBreak()}}
+let hoverBtn=false,fl=0;
+function drawBoard(){
+  const q=Q[S.day-1],ok=S.cash>=q,F='"Press Start 2P",monospace';
+  bx.fillStyle='#1b100c';bx.fillRect(0,0,512,360);
+  bx.fillStyle='#d8352a';bx.fillRect(0,0,512,58);
+  bx.strokeStyle='#000';bx.lineWidth=8;bx.strokeRect(4,4,504,352);
+  bx.fillStyle='#f2e2c0';bx.font='24px '+F;bx.fillText('DAY '+S.day+'  SHIFT '+S.sh+'/3',20,40);
+  bx.fillStyle='#ffd23f';bx.fillText('QUOTA $'+q,20,104);
+  bx.fillStyle=ok?'#3fd16a':'#ff5a4a';bx.fillText('CASH  $'+S.cash.toFixed(0),20,142);
+  bx.fillStyle='#b89a78';bx.font='24px VT323,monospace';bx.fillText('NET $'+net().toFixed(0)+'  |  sold at day end',20,172);
+  if(S.debt>0){bx.fillStyle='#ff5a4a';bx.textAlign='right';bx.fillText('DEBT $'+S.debt+' / '+S.debtLeft+'d',492,172);bx.textAlign='left'}
+  bx.fillStyle='#000';bx.fillRect(20,188,472,30);const br=S.phase=='break',fr=br?S.bt/20:1-S.t/S.len;bx.fillStyle=br?'#3fa9ff':fr<.2?'#ff5a4a':'#ff9a2e';bx.fillRect(24,192,464*Math.max(0,fr),22);
+  bx.fillStyle='#000';for(let i=1;i<12;i++)bx.fillRect(24+i*464/12,192,3,22);
+  bx.fillStyle='#000';bx.fillRect(18,264,476,78);bx.fillStyle=br?(hoverBtn?'#5fbfff':'#2b7fd0'):(hoverBtn?'#ff6a4a':'#d8352a');bx.fillRect(22,268,468,66);bx.fillStyle=br?'#1a4f8a':'#8a1d15';bx.fillRect(22,326,468,8);
+  bx.fillStyle='#f2e2c0';bx.font='28px '+F;bx.textAlign='center';bx.fillText(br?'SKIP BREAK':'CLOCK OUT',256,312);bx.textAlign='left';
+  bt.needsUpdate=true;
+}
+function chart(c,s){
+  const x=c.getContext('2d'),w=c.width,h=c.height;x.fillStyle='#0d0705';x.fillRect(0,0,w,h);
+  const a=s.h,mn=Math.min(...a),mx=Math.max(...a),r=(mx-mn)||1;
+  x.strokeStyle=a[a.length-1]>=s.o?'#3fd16a':'#ff5a4a';x.lineWidth=Math.max(2,w/150);x.beginPath();
+  a.forEach((v,i)=>{const px=i/Math.max(1,a.length-1)*(w-8)+4,py=h-8-(v-mn)/r*(h-24);i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke();
+  x.fillStyle='#f2e2c0';x.font=(w/12|0)+'px VT323,monospace';x.fillText(s.n+' $'+s.p.toFixed(2),6,w/12);
+}
+function drawScreen(){const s=stocks[S.sel];chart(sk,s);sx.fillStyle='#7dff9a';sx.font='14px Courier New';sx.fillText('> CLICK TO TRADE',6,192);st.needsUpdate=true}
+
+/* ---------- trading UI ---------- */
+const tb=$('tb');
+stocks.forEach((s,i)=>{const r=document.createElement('tr');r.dataset.i=i;r.innerHTML='<td><b>'+s.n+'</b></td><td class=p></td><td class=c></td><td class=o></td><td class=pl></td><td><button data-a=b1>Buy</button><button data-a=bm>Max</button><button data-a=s1>Sell</button><button data-a=sa>All</button></td>';tb.appendChild(r)});
+function ui(){
+  [...tb.rows].forEach((r,i)=>{const s=stocks[i],ch=(s.p/s.o-1)*100;
+    r.cells[1].textContent='$'+s.p.toFixed(2);r.cells[2].textContent=(ch>=0?'+':'')+ch.toFixed(1)+'%';r.cells[2].className='c '+(ch>=0?'up':'dn');
+    r.cells[3].textContent='x'+(S.hold[i]||0);const h=S.hold[i]||0,pl=h?h*s.p-(S.cost[i]||0):0;r.cells[4].textContent=h?(pl>=0?'+':'-')+'$'+Math.abs(pl).toFixed(2):'-';r.cells[4].className='pl '+(h?(pl>=0?'up':'dn'):'');r.classList.toggle('sel',i==S.sel)});
+  $('cs').textContent='Cash $'+S.cash.toFixed(2);const q=Q[S.day-1],nw=net();$('gl').textContent='GOAL: hold $'+q+' at clock out. You have $'+nw.toFixed(0)+(nw>=q?' - enough!':' - need $'+Math.ceil(q-nw)+' more')+(S.debt>0?'  |  DEBT $'+S.debt+' ('+S.debtLeft+'d left)':'');$('gb').style.width=Math.min(100,nw/q*100)+'%';
+  chart($('ch'),stocks[S.sel]);
+}
+tb.onclick=e=>{
+  const r=e.target.closest('tr');if(!r)return;const i=+r.dataset.i,s=stocks[i],b=e.target.closest('button');S.sel=i;
+  if(b&&S.run&&S.phase=='work'){
+    const a=b.dataset.a,bp=s.p*(1+S.fee);
+    if(a[0]=='b'){const n=a=='b1'?1:Math.floor(S.cash/bp);if(n>=1&&S.cash>=bp*n){S.cash=+(S.cash-bp*n).toFixed(2);S.hold[i]=(S.hold[i]||0)+n;S.cost[i]=(S.cost[i]||0)+bp*n;if(S.tut){s.tr=s.v*1.5;s.tl=16}beep(520);tg('buy')}else beep(120,.15)}
+    else{const n=a=='s1'?Math.min(1,S.hold[i]||0):S.hold[i]||0;if(n){S.cash=+(S.cash+n*s.p*(1-S.fee)).toFixed(2);S.cost[i]=(S.cost[i]||0)*(1-n/S.hold[i]);S.hold[i]-=n;beep(740);tg('sell')}else beep(120,.15)}
+  }
+  ui();drawBoard();
+};
+
+/* ---------- modes, modals, days ---------- */
+const cp=new THREE.Vector3(.4,1.5,.3),cl=new THREE.Vector3(.4,1.5,-3);let mx=0,my=0;
+function go(m){S.mode=m;$('pc').style.display=m=='pc'?'flex':'none';$('hint').style.display=m=='office'?'block':'none';if(m=='pc'){showApp(S.tut?'stock':'desk');ui()}tg(m=='pc'?'pc':'leave')}
+document.querySelectorAll('.leave').forEach(b=>b.onclick=()=>{go('office');lockReq(true)});
+/* ---------- computer desktop + shop ---------- */
+const SHOP=[
+ {k:'insider',n:'Insider tip',d:'News arrives early with the true direction',c:150,f:()=>S.insider=true},
+ {k:'fee',n:'Fee waiver',d:'Trades cost nothing',c:100,f:()=>S.fee=0},
+ {k:'stamp',n:'Heavy stamp',d:'Papers pay double',c:80,f:()=>S.pay*=2},
+ {k:'ot',n:'Overtime pass',d:'Every shift runs 5s longer',c:60,f:()=>S.len+=5,rep:1},
+ {k:'coffee',n:'Cup of coffee',d:'Refills the paper stack',c:10,f:()=>S.paper=15,rep:1}];
+function stx(id,v){const e=$(id);if(e.textContent!==v)e.textContent=v}
+function showApp(a){S.app=a;$('dsk').style.display=a=='desk'?'':'none';$('stk').style.display=a=='stock'?'':'none';$('shp').style.display=a=='shop'?'':'none';$('smenu').style.display='none';if(a=='stock')ui();if(a=='desk')deskState();if(a=='shop')drawShop()}
+let dmUntil=0;
+function dmsg(t){stx('dmsg',t);dmUntil=performance.now()+3000}
+function deskState(){const br=S.phase=='break'&&!S.tut;$('icoStock').classList.toggle('off',br);$('icoShop').classList.toggle('off',!br);stx('dcs','Cash $'+S.cash.toFixed(2));stx('tinfo','Day '+S.day+'  |  '+(br?'BREAK '+Math.ceil(S.bt)+'s':'Shift '+S.sh+'/3'));if(performance.now()>dmUntil)stx('dmsg',br?'Break: only the shop is open.':'The shop is only open during breaks.')}
+function openStock(){if(S.phase=='break'&&!S.tut){beep(120,.2);dmsg('Market closed during break. Only the shop is open.');return}showApp('stock');beep(300)}
+function openShop(){if(!(S.phase=='break'&&!S.tut)){beep(120,.2);dmsg('The shop is only open during breaks.');return}showApp('shop');beep(300)}
+$('icoStock').onclick=openStock;$('icoShop').onclick=openShop;
+$('sbtn').onclick=()=>{const m=$('smenu');m.style.display=m.style.display=='flex'?'none':'flex'};
+$('smenu').onclick=e=>{const b=e.target.closest('button');if(!b)return;$('smenu').style.display='none';b.dataset.s=='stock'?openStock():b.dataset.s=='shop'?openShop():(go('office'),lockReq(true))};
+document.querySelectorAll('.home').forEach(b=>b.onclick=()=>{showApp('desk');beep(300)});
+function drawShop(){stx('shcs','Cash $'+S.cash.toFixed(2));$('shb').innerHTML=SHOP.map(i=>{const own=!i.rep&&S.perks.includes(i.k);return '<tr><td><b>'+i.n+'</b><br><span class=sd>'+i.d+'</span></td><td>$'+i.c+'</td><td>'+(own?'<b class=up>OWNED</b>':'<button data-k='+i.k+(S.cash>=i.c?'':' class=no')+'>Buy</button>')+'</td></tr>'}).join('')}
+$('shb').onclick=e=>{const b=e.target.closest('button');if(!b)return;const i=SHOP.find(x=>x.k==b.dataset.k);if(!i||(!i.rep&&S.perks.includes(i.k))||S.cash<i.c){beep(120,.15);return}
+  S.cash=+(S.cash-i.c).toFixed(2);i.f();if(!i.rep)S.perks.push(i.k);beep(740);drawBoard();ui();drawShop()};
+addEventListener('keydown',e=>{if(e.key=='Escape'&&S.mode=='pc')go('office')});
+function modal(h,btns){$('mb').innerHTML=h;btns.forEach(b=>{const e=document.createElement('button');e.textContent=b[0];e.onclick=()=>{$('modal').style.display='none';b[1]();lockReq(true)};$('mb').appendChild(e)});$('modal').style.display='flex';try{document.exitPointerLock()}catch(e){}}
+const PERKS=[
+ {k:'insider',t:'Insider tip: news arrives early with the true direction',f:()=>S.insider=true},
+ {k:'fee',t:'Fee waiver: trades cost nothing',f:()=>S.fee=0},
+ {k:'stamp',t:'Heavy stamp: papers pay double',f:()=>S.pay*=2},
+ {k:'ot',t:'Overtime: every shift runs 5s longer',f:()=>S.len+=5,rep:1},
+ {k:'cash',t:'Petty cash: +$60 now',f:()=>S.cash+=60,rep:1}];
+function startDay(){
+  S.t=0;S.paper=15;S.hold={};S.cost={};pend=[];nt=0;
+  stocks.forEach(s=>{s.p=s.b;s.o=s.b;s.h=[s.b];s.tr=0;s.tl=0;s.bias=0;s.nb=0});
+  S.sh=1;S.phase='work';S.run=true;$('tick').textContent='';$('news').innerHTML='';go('office');drawBoard();if(!S.tut)startBreak();
+}
+function endDay(){
+  if(!S.run)return;S.run=false;go('office');
+  stocks.forEach((s,i)=>{S.cash+=(S.hold[i]||0)*s.p});S.hold={};S.cash=+S.cash.toFixed(2);drawBoard();
+  const q=Q[S.day-1];
+  if(S.cash<q)return modal('<h2>Short by $'+(q-S.cash).toFixed(0)+'</h2>You made $'+S.cash.toFixed(0)+'. The quota was $'+q+'.<br>The front door is locked. It was always locked.<br>You reached day '+S.day+'.',[['Start over',reset]]);
+  const pre=S.cash,bk2=bankCut();
+  if(S.debt>0&&S.debtLeft<=0){drawBoard();return modal('<h2>The bank takes everything</h2>The 5 rounds are up and you still owe $'+S.debt+'.<br>Your cash, your stocks, your desk. All of it is gone.<br>You reached day '+S.day+'.',[['Start over',reset]])}
+  const bn=bk2>=0?'<br><small>The bank took 25% ($'+bk2+'). '+(S.debt>0?'You still owe $'+S.debt+' ('+S.debtLeft+' round'+(S.debtLeft==1?'':'s')+' left).':'Your debt is cleared!')+'</small>':'';
+  drawBoard();
+  if(S.day==Q.length)return modal('<h2>Door unlocked</h2>You cleared all '+Q.length+' quotas with $'+pre.toFixed(0)+'.'+bn+'<br>The lights finally go out. You leave.',[['Play again',reset]]);
+  const opts=PERKS.filter(p=>p.rep||!S.perks.includes(p.k)).sort(()=>Math.random()-.5).slice(0,3);
+  modal('<h2>Quota met</h2>$'+pre.toFixed(0)+' / $'+q+'. Day '+(S.day+1)+' quota: $'+Q[S.day]+'.'+bn+'<br>Pick a perk:',opts.map(p=>[p.t,()=>{p.f();S.perks.push(p.k);S.day++;startDay()}]));
+}
+function reset(){Object.assign(S,{day:1,cash:100,len:40,pay:4,fee:.02,insider:false,perks:[],debt:0,debtLeft:0,call:0,callT:0});startDay()}
+
+const TUT=[
+ ['Your job','Each shift you must end with at least the quota shown on the board. Miss it and you never leave.'],
+ ['The computer','Click the old computer to open its desktop. The Stock Market icon is for trading, and the Shop icon sells upgrades (the shop is only open during breaks). In the market: buy low, sell high, and click a row to see its chart. Cheap stocks are calmer; VOID can double or die. News flashes a few seconds before a price moves, but it is wrong about 3 times in 10.'],
+ ['The papers','Click the paper stack to stamp for small cash. It runs out and refills slowly, so use it while the market is quiet.'],
+ ['The phone','During breaks your mouse locks to the screen centre so you can look around freely (Esc frees it). Click the red phone on your desk to ask the bank for a loan. They call back later. The bank takes 25% of your money at each clock out, and if the debt is not repaid within 5 days it takes everything and you lose.'],
+ ['Clocking out','Click the red button on the board when you are ready, or let the timer run out. Everything you hold is sold at market price. Meet the quota, pick a perk, and the next quota is higher.']];
+function tut(i,fn,lab){const t=TUT[i],last=i==TUT.length-1;modal('<h2>'+t[0]+'</h2>'+t[1]+'<br><small>'+(i+1)+' of '+TUT.length+'</small>',[[last?lab:'Next',()=>last?fn():tut(i+1,fn,lab)]].concat(last?[]:[['Skip',fn]]))}
+$('help').onclick=()=>{if(!S.run)return;S.run=false;tut(0,()=>{S.run=true},'Back to work')};
+/* ---------- guided tutorial ---------- */
+const WP={board:new THREE.Vector3(1.7,2.6,-2.88),mon:new THREE.Vector3(-.5,1.45,-2.1),pap:new THREE.Vector3(1,1.3,-2.1),btn:new THREE.Vector3(1.7,1.8,-2.88)};
+const GS=[
+ {t:'Your goal',x:'Each day you must hold the quota shown on the board when you clock out. You earn money by trading stocks: buy cheap, sell higher.',w:'board',ev:'next'},
+ {t:'Open the computer',x:'Click the glowing old computer to open the stock market.',w:'mon',ev:'pc'},
+ {t:'What a stock is',x:'A stock is a tiny piece of a company. Its PRICE changes every second. Each row is one company. PAPR is calm and slow, VOID swings wildly: more risk, more reward. Press Next.',css:'#tb',ev:'next'},
+ {t:'Buy 1 share',x:'Click a green BUY button. You pay the current price plus a 2% fee, and now you OWN 1 share. If its price rises, your share is worth more.',css:'[data-a=b1]',ev:'buy'},
+ {t:'Watch your profit',x:'PROFIT shows what you would gain or lose if you sold right now. Green is a gain, red is a loss. In training the price drifts up so you can see it. Press Next once it is green.',css:'td.pl',ev:'next'},
+ {t:'Sell to cash in',x:'Profit only counts once you SELL. Click the red SELL button (1 share) or ALL. The shares turn back into cash.',css:'[data-a=s1],[data-a=sa]',ev:'sell'},
+ {t:'Track the goal',x:'This bar shows your cash plus stocks against the quota. Fill it before you clock out. Press Next.',css:'#goal',ev:'next'},
+ {t:'Read the news',x:'A headline appears, and a few seconds later that stock usually jumps or falls. It is right about 7 times in 10. Good news: buy. Bad news: sell. Press Next.',css:'#news',ev:'next',demo:()=>say('PITT wins a government contract (example)')},
+ {t:'Leave the computer',x:'Click Leave, or press Esc, to get back to your desk.',css:'#back',ev:'leave'},
+ {t:'Stamp some papers',x:'Click the paper stack for quick cash. The stack shrinks and refills slowly, so use it while the market is quiet.',w:'pap',ev:'paper'},
+ {t:'Clock out',x:'Click the red CLOCK OUT button when you are ready, or let the timer run out. Everything you hold is sold, and you need the quota or you never leave. Real days have 3 shifts with 20s breaks, where you can walk around and watch the news on the TV. This one is practice.',w:'btn',ev:'clock'}];
+let gk='';
+function showGuide(){const g=GS[S.gi];document.body.classList.toggle('tut',!!S.tut);$('guide').hidden=!S.tut||!g;if(!g)return;$('gt').textContent=g.t;$('gx').textContent=g.x;$('gn').textContent='Step '+(S.gi+1)+' of '+GS.length;$('gnext').style.display=g.ev=='next'?'':'none';if(S.tut&&g.demo)g.demo()}
+function tg(ev){if(!S.tut)return;const g=GS[S.gi];if(!g||g.ev!=ev)return;beep(660,.1);S.gi++;if(S.gi>=GS.length)return endTut();showGuide()}
+function endTut(skip){S.tut=0;S.run=false;showGuide();$('hl').style.display='none';gk='';document.querySelectorAll('.glow').forEach(e=>e.classList.remove('glow'));go('office');
+  skip===1?reset():modal('<h2>Training over</h2>That is the whole job. Real shifts start now: day 1 quota is $'+Q[0]+'.',[['Clock in',reset]])}
+function startTut(){Object.assign(S,{day:1,cash:100,len:40,pay:4,fee:.02,insider:false,perks:[],tut:1,gi:0,debt:0,debtLeft:0,call:0,callT:0});startDay();showGuide()}
+$('gnext').onclick=()=>tg('next');$('gskip').onclick=()=>endTut(1);
+function guideTick(){
+  const hl=$('hl'),g=GS[S.gi];if(!S.tut||!g){hl.style.display='none';return}
+  const pc=S.mode=='pc',k=S.gi+S.mode;
+  if(k!=gk){gk=k;document.querySelectorAll('.glow').forEach(e=>e.classList.remove('glow'));
+    const sel=g.css?(pc?g.css:null):(pc?'#back':null);if(sel)document.querySelectorAll(sel).forEach(e=>e.classList.add('glow'))}
+  const key=pc?null:(g.css?'mon':g.w);if(!key){hl.style.display='none';return}
+  const v=WP[key].clone().project(cam);
+  hl.style.display=v.z<1?'block':'none';hl.style.left=(v.x*.5+.5)*innerWidth+'px';hl.style.top=(.5-v.y*.5)*innerHeight+'px';
+}
+/* ---------- input ---------- */
+const ray=new THREE.Raycaster(),mv=new THREE.Vector2();
+function pick(e){
+  if(ctr())mv.set(0,0);else mv.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);
+  ray.setFromCamera(mv,cam);return ray.intersectObjects(PICK)[0]
+}
+const cur=$('cur');
+addEventListener('pointermove',e=>{
+  cur.style.transform='translate('+e.clientX+'px,'+e.clientY+'px)';cur.classList.toggle('hot',!!e.target.closest('button,tr'));
+  mx=e.clientX/innerWidth*2-1;my=-(e.clientY/innerHeight)*2+1;
+  if(ctr()||S.mode!='office'||!S.run)return;
+  const h=pick(e);let hb=!!(h&&h.object==board&&h.uv.y<.26);
+  if(h)cur.classList.add('hot');
+  if(hb!=hoverBtn){hoverBtn=hb;drawBoard()}
+});
+$('g').addEventListener('pointerdown',e=>{
+  if(S.mode!='office'||!S.run)return;
+  if(!locked&&!noLock&&wantLock()){const first=vfail==0;lockReq(true);if(first)return}
+  const h=pick(e);if(!h)return;
+  if(h.object==tvs||h.object==tvb){S.phase=='break'?tv(true):(beep(120,.2),say('The TV only works during breaks'))}
+  else if(h.object==phoneBase||h.object==phoneHand){S.phase=='break'?openPhone():(beep(120,.2),say('The phone only works during breaks'))}
+  else if(h.object==mon||h.object==screen){go('pc');beep(300)}
+  else if(h.object==papers){
+    if(S.paper>0){S.paper--;S.cash+=S.pay;beep(900,.04);drawBoard();tg('paper')}else beep(120,.1)
+  }else if(h.object==board&&h.uv.y<.26){beep(200,.3);S.tut?tg('clock'):S.phase=='break'?endBreak():endDay()}
+});
+function resize(){const k=Math.min(.5,720/innerWidth);R.setSize(Math.round(innerWidth*k),Math.round(innerHeight*k),false);cam.aspect=innerWidth/innerHeight;cam.fov=cam.aspect<1?78:60;cam.updateProjectionMatrix()}
+addEventListener('resize',resize);resize();
+
+/* ---------- loop ---------- */
+let last=performance.now(),acc=0,bacc=0;
+function loop(now){
+  const dt=Math.min(.1,(now-last)/1000);last=now;
+  if(S.run){
+    const wk=S.phase=='work';if(wk&&!S.tut)S.t+=dt;if(wk)acc+=dt;bacc+=dt;if(!wk){S.bt-=dt;if(S.bt<=0)endBreak()}
+    S.paper=Math.min(15,S.paper+dt/3);
+    while(acc>=.7){acc-=.7;tick()}
+    if(bacc>.5){bacc=0;drawBoard();drawScreen()}
+    papers.scale.y=Math.max(.05,S.paper/15);papers.position.y=.95+.15*papers.scale.y*2;
+    if(wk&&S.t>=S.len)endShift();
+  }
+  fl=Math.max(0,fl-dt*3);if(Math.random()<.008)fl=1;lamp.intensity=1.25-fl*.95;
+  const pc=S.mode=='pc',brk=S.run&&S.phase=='break'&&!pc;let tp,tl;
+  if(pc){tp=new THREE.Vector3(-.5,1.42,-1.35);tl=new THREE.Vector3(-.5,1.42,-2.3)}
+  else if(brk){
+    if(locked){}
+    else if(virt()){const ex=mx*.5+.5,ey=.5-my*.5,z=.07,ep=v=>v<z?-(z-v)/z:v>1-z?(v-(1-z))/z:0;yaw+=ep(ex)*dt*2.2;pitch=Math.max(-1.2,Math.min(1.2,pitch-ep(ey)*dt*1.5))}
+    else{yaw=mx*2.4;pitch=my*.4}
+    const yw=yaw,sp=2.4*dt,mf=(K.w||K.arrowup?1:0)-(K.s||K.arrowdown?1:0),mr=(K.d||K.arrowright?1:0)-(K.a||K.arrowleft?1:0),ox=P.x,oz=P.z;
+    if(!tvFull){P.x+=(Math.sin(yw)*mf+Math.cos(yw)*mr)*sp;P.z+=(-Math.cos(yw)*mf+Math.sin(yw)*mr)*sp}
+    P.z=Math.min(3.4,Math.max(-1.2,P.z));P.x=Math.min(3.4,Math.max(-3.4,P.x));if(P.z<-.1)P.x=Math.min(2.4,Math.max(-2,P.x));
+    if(!tvFull){stepD+=Math.hypot(P.x-ox,P.z-oz);if(stepD>=.85){stepD=0;footstep()}}
+    const cpt=Math.cos(pitch);tp=P.clone();tl=new THREE.Vector3(P.x+Math.sin(yw)*cpt*3,1.5+Math.sin(pitch)*3,P.z-Math.cos(yw)*cpt*3)}
+  else{P.set(.4,1.5,.3);tp=new THREE.Vector3(.4+mx*.15,1.5+my*.05,.3);tl=new THREE.Vector3(.4+mx*1.2,1.5+my*.5,-3)}
+  cp.lerp(tp,brk?.2:.08);cl.lerp(tl,brk?(ctr()?.6:.2):.08);cam.position.copy(cp);cam.lookAt(cl);cam.updateMatrixWorld();extras(dt,now);
+  newsFrame(now/1000);guideTick();R.render(sc,cam);requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);drawBoard();drawScreen();document.fonts&&document.fonts.ready.then(()=>{drawBoard();drawScreen()});
+modal('<h2>CUBICLE PIT</h2>Hit the quota. Clock out. Repeat.<br><br>Trade stocks on the old computer. Stamp papers for pocket cash. Click the red button on the board to clock out. Everything you hold is sold when the shift ends.',[['Guided tutorial',startTut],['Skip, start shift',startDay]]);
+</script></body></html>
